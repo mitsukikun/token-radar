@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Token Radar — which pre-token protocols would be worth the most if they launched</title>
+<meta name="description" content="A radar for token launches: every rankable pre-token protocol in the snapshot, ranked by an implied value built from category comps, TVL growth, age and chain breadth, with a risk score and a farm plan per protocol.">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="mark" aria-hidden="true">◉</span>
+    <div>
+      <h1>Token Radar</h1>
+      <p class="tagline">Which pre-token protocols would be worth the most if they launched — and what it costs to farm them.</p>
+    </div>
+  </div>
+  <div class="meta">
+    <span id="asof" class="pill">Snapshot —</span>
+    <span class="pill model">Model <strong>radar-2</strong></span>
+  </div>
+</header>
+
+<main>
+  <section class="lede" aria-label="What this radar is">
+    <p><strong>What you are looking at.</strong> Every protocol in the snapshot that records no token yet is ranked by an
+    <em>implied value</em>: its TVL priced at the median market-cap-per-TVL of the live-token protocols in its own category,
+    adjusted for seven-day TVL growth, for how long it has run with no token, and for how many chains it lives on.
+    The watchlist is the floor of this board, never the ceiling — the board also ranks the early finds the watchlist does not name.</p>
+    <p><strong>What it is not.</strong> An implied value is a model, not a price and not a promise: a protocol with no token
+    today may never launch one. “No token recorded” means the snapshot carries no market cap, no CoinGecko id and no symbol
+    for it — it does not mean the protocol has no token. Wrapped, bridged and staked-asset products are not ranked at all:
+    their TVL is the asset itself and the receipt token already exists, so there is nothing left to launch — the Set aside
+    view lists them. Read the risk score next to every row before you farm anything.</p>
+  </section>
+
+  <section class="facts" id="facts" aria-label="Board facts"></section>
+
+  <section class="controls" aria-label="Filters and sorting">
+    <label>Search <input id="q" type="search" placeholder="protocol name or slug" autocomplete="off"></label>
+    <label>Category <select id="category"><option value="">All categories</option></select></label>
+    <label>Chain <select id="chain"><option value="">All chains</option></select></label>
+    <label>Min TVL <select id="tvl">
+      <option value="0">Any</option>
+      <option value="10000000">$10M+</option>
+      <option value="50000000">$50M+</option>
+      <option value="100000000">$100M+</option>
+      <option value="1000000000">$1B+</option>
+    </select></label>
+    <label>Risk <select id="risk">
+      <option value="">Any risk</option>
+      <option value="Low">Low</option>
+      <option value="Medium">Medium</option>
+      <option value="High">High</option>
+    </select></label>
+    <label>Sort <select id="sort">
+      <option value="implied">Implied value ↓</option>
+      <option value="tvl">TVL ↓</option>
+      <option value="growth">7-day change ↓</option>
+      <option value="age">Age ↓</option>
+      <option value="risk">Risk ↓</option>
+      <option value="name">Name A–Z</option>
+    </select></label>
+    <button id="reset" type="button">Reset</button>
+  </section>
+
+  <nav class="tabs" aria-label="Views">
+    <button type="button" data-view="board" class="active">Pre-token board</button>
+    <button type="button" data-view="live">Live token</button>
+    <button type="button" data-view="setaside">Set aside</button>
+    <button type="button" data-view="model">Model &amp; comps</button>
+  </nav>
+
+  <p class="count" id="count" role="status"></p>
+
+  <section id="boardView" class="view">
+    <div class="tablewrap">
+      <table id="board">
+        <thead>
+          <tr>
+            <th class="num">#</th>
+            <th>Protocol</th>
+            <th class="num">TVL</th>
+            <th class="num">7-day</th>
+            <th class="num">Age</th>
+            <th>Risk</th>
+            <th class="num">Implied value</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="hint">Click a row to see the model breakdown, the risk reasons and the farm plan. The board shows the first 200 matching rows; narrow the filters to see the rest.</p>
+  </section>
+
+  <section id="liveView" class="view" hidden>
+    <p class="viewnote">These protocols already trade, so the board does not rank them — the market has already priced them.
+    They are the comps: their market-cap-per-TVL is what the pre-token board is priced against. Showing the top
+    <span id="liveCount"></span> by market cap.</p>
+    <div class="tablewrap">
+      <table id="live">
+        <thead>
+          <tr>
+            <th>Protocol</th>
+            <th class="num">Market cap</th>
+            <th class="num">TVL</th>
+            <th class="num">Mcap / TVL</th>
+            <th class="num">7-day</th>
+          </tr>
+        </thead>
+        <tbody id="liveRows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="setAsideView" class="view" hidden>
+    <p class="viewnote">These protocols record no token, but they are not ranked: their TVL is the asset itself —
+    a wrapped bitcoin's TVL is the bitcoin it holds, a canonical bridge's TVL is the chain it serves — and the receipt
+    token already exists, so there is nothing left to launch. Ranking them would put a chain's own bridge at the top of
+    a token launch radar. Showing the largest first.</p>
+    <div class="tablewrap">
+      <table id="setAside">
+        <thead>
+          <tr>
+            <th>Protocol</th>
+            <th class="num">TVL</th>
+            <th class="num">7-day</th>
+            <th>Why it is set aside</th>
+          </tr>
+        </thead>
+        <tbody id="setAsideRows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="modelView" class="view" hidden>
+    <h2>How the implied value is built</h2>
+    <p class="formula">implied = TVL × category multiple × growth multiplier × maturity multiplier × chain multiplier</p>
+    <ul class="modelnotes" id="modelNotes"></ul>
+    <h3>Category comps — median market-cap-per-TVL of live-token protocols</h3>
+    <p class="viewnote">A category with fewer than three live comps uses the global median instead. Multiples are clamped to
+    0.05 – 1.00, so one outlier category cannot price the board.</p>
+    <div class="tablewrap">
+      <table id="comps">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th class="num">Live comps</th>
+            <th class="num">Median mcap / TVL</th>
+            <th class="num">Multiple used</th>
+          </tr>
+        </thead>
+        <tbody id="compRows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <aside id="detail" class="detail" aria-label="Protocol detail" hidden>
+    <button id="closeDetail" type="button" class="close" aria-label="Close detail">✕</button>
+    <div id="detailBody"></div>
+  </aside>
+</main>
+
+<footer>
+  <p>Data: <span id="source">—</span>. Implied values are a model built from this snapshot alone; they are not prices, not
+  financial advice, and not a promise that any protocol will launch a token. Farm plans never ask you to pay to claim.</p>
+</footer>
+
+<script src="../data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
